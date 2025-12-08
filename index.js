@@ -38,7 +38,7 @@ for (const file of commandFiles) {
 }
 
 client.on('ready', () => {
-  console.log(`✅ SelvinBot listo como ${client.user.tag}`);
+  console.log(`✅ LUPBot listo como ${client.user.tag}`);
 });
 
 // ===============================

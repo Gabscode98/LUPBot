@@ -8,7 +8,7 @@ export function createEmbed({
 } = {}) {
     const embed = new EmbedBuilder()
         .setColor(color)
-        .setFooter({ text: "🤖SelvinBot • GabsKamitani" })
+        .setFooter({ text: "🤖LUPBot • GabsKamitani" })
         .setTimestamp();
 
     if (title) embed.setTitle(title);
