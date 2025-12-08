@@ -4,6 +4,18 @@ import path from 'path';
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import { createEmbed } from './src/embeds.js';
 
+import express from "express";
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+  res.send("SelvinBot activo ✅");
+});
+
+app.listen(PORT, () => {
+  console.log("Puerto activo:", PORT);
+});
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
