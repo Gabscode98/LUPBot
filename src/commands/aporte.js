@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import fs from "fs";
 import { createEmbed } from "../embeds.js";
 
-const CDN_CHANNEL_ID = "775599499041177600";
+const CDN_CHANNEL_ID = "1447678521215291525";
 
 function generarAutoID(data) {
   const nums = data.map(m => parseInt(m.id)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
