@@ -22,30 +22,54 @@ app.listen(PORT, () => {
 // Cliente Discord
 // =======================
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds, // Requerido para slash commands
-  ],
+  intents: [GatewayIntentBits.Guilds],
 });
 
 client.commands = new Collection();
 
-// =======================
-// Cargar Comandos
-// =======================
+// ===============================
+// 📦 CARGAR COMANDOS (VERSIÓN SEGURA)
+// ===============================
 const commandsPath = path.join(process.cwd(), "src/commands");
-const commandFiles = fs.readdirSync(commandsPath);
+const commandFiles = fs
+  .readdirSync(commandsPath)
+  .filter((file) => file.endsWith(".js"));
 
 for (const file of commandFiles) {
-  const command = await import(`./src/commands/${file}`);
-  client.commands.set(command.default.data.name, command.default);
+  try {
+    const command = await import(`./src/commands/${file}`);
+
+    // ✅ Protección total contra archivos rotos
+    if (
+      !command.default ||
+      !command.default.data ||
+      !command.default.execute
+    ) {
+      console.error(`❌ ARCHIVO DE COMANDO INVÁLIDO: ${file}`);
+      continue;
+    }
+
+    client.commands.set(
+      command.default.data.name,
+      command.default
+    );
+
+    console.log(`✅ Comando cargado: ${file}`);
+  } catch (err) {
+    console.error(`🔥 ERROR AL CARGAR: ${file}`);
+    console.error(err);
+  }
 }
 
+// =======================
+// ✅ BOT LISTO
+// =======================
 client.once("ready", () => {
   console.log(`✅ LUPBot listo como ${client.user.tag}`);
 });
 
 // =======================
-// Slash Commands Handler
+// ⚡ SLASH COMMANDS HANDLER (ANTI 40060)
 // =======================
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
@@ -58,7 +82,6 @@ client.on("interactionCreate", async (interaction) => {
   } catch (err) {
     console.error("❌ Error ejecutando comando:", err);
 
-    // Evita "Interaction has already been acknowledged"
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: "❌ Hubo un error al ejecutar este comando.",
