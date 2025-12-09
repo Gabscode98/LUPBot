@@ -1,6 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
 import fs from "fs";
-import fetch from "node-fetch";
 import { createEmbed } from "../embeds.js";
 
 // Canal donde se publicará el meme subido

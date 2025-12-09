@@ -2,45 +2,32 @@ import { SlashCommandBuilder } from "discord.js";
 import fs from "fs";
 import { createEmbed } from "../embeds.js";
 
-// Guarda el último ID enviado (en memoria)
-let ultimoID = null;
-
 export default {
   data: new SlashCommandBuilder()
     .setName("meme")
-    .setDescription("Envía un meme random"),
+    .setDescription("Envía un meme random")
+    .addStringOption(o =>
+      o.setName("tag")
+        .setDescription("Ej: rod, selvin, yayo")
+        .setRequired(false)
+    ),
 
   async execute(interaction) {
+    const tag = interaction.options.getString("tag");
     const data = JSON.parse(fs.readFileSync("./data/memes.json"));
 
-    if (data.length === 0)
-      return interaction.reply("⚠️ No hay memes todavía.");
+    const filtrados = tag
+      ? data.filter(m => m.tag === tag)
+      : data;
 
-    if (data.length === 1) {
-      const unico = data[0];
-      const embed = createEmbed({
-        title: "Meme Random",
-        description: `ID: **${unico.id}**`,
-        color: "#1E90FF",
-        image: unico.url
-      });
+    if (!filtrados.length)
+      return interaction.reply({ content: "❌ No hay memes con ese tag.", ephemeral: true });
 
-      ultimoID = unico.id;
-      return interaction.reply({ embeds: [embed] });
-    }
-
-    // Buscar uno distinto al último
-    let random;
-    do {
-      random = data[Math.floor(Math.random() * data.length)];
-    } while (random.id === ultimoID);
-
-    ultimoID = random.id;
+    const random = filtrados[Math.floor(Math.random() * filtrados.length)];
 
     const embed = createEmbed({
-      title: "Meme Random",
+      title: `📸 Meme ${random.tag}`,
       description: `ID: **${random.id}**`,
-      color: "#1E90FF",
       image: random.url
     });
 
