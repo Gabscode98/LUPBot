@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 import { createEmbed } from "../embeds.js";
 
 // 🔗 Canal CDN donde se publican los memes
-const CDN_CHANNEL_ID = "1447678521215291525";
+const CDN_CHANNEL_ID = "1449247346075631666";
 
 // 🆔 Genera ID reutilizando huecos (001, 002, 003...)
 function generarID(data) {
