@@ -1,41 +1,30 @@
 import { SlashCommandBuilder } from "discord.js";
 import fs from "fs";
-import { createEmbed } from "../embeds.js";
+
+const DB = "./data/memes.json";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("eliminar")
     .setDescription("Elimina un meme por ID")
     .addStringOption(o =>
-      o.setName("id")
-        .setDescription("ID del meme")
-        .setRequired(true)
+      o.setName("id").setDescription("ID del meme").setRequired(true)
     ),
 
   async execute(interaction) {
+    await interaction.deferReply({ ephemeral: true });
+
     const id = interaction.options.getString("id");
-    const filePath = "./data/memes.json";
+    const data = JSON.parse(fs.readFileSync(DB));
 
-    if (!fs.existsSync(filePath)) {
-      return interaction.reply({ content: "❌ No existe la base de datos.", ephemeral: true });
-    }
-
-    const data = JSON.parse(fs.readFileSync(filePath));
     const index = data.findIndex(m => m.id === id);
-
     if (index === -1) {
-      return interaction.reply({ content: "❌ ID no encontrado.", ephemeral: true });
+      return interaction.editReply("❌ Ese ID no existe.");
     }
 
-    const eliminado = data.splice(index, 1)[0];
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    data.splice(index, 1);
+    fs.writeFileSync(DB, JSON.stringify(data, null, 2));
 
-    const embed = createEmbed({
-      title: "🗑 Meme eliminado",
-      description: `ID: **${eliminado.id}**\nTag: **${eliminado.tag}**`,
-      color: "#FF0000"
-    });
-
-    await interaction.reply({ embeds: [embed] });
+    return interaction.editReply(`🗑 Meme **${id}** eliminado correctamente.`);
   }
 };

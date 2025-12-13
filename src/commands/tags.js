@@ -5,25 +5,20 @@ import { createEmbed } from "../embeds.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("tags")
-    .setDescription("Muestra las categorías de memes disponibles"),
+    .setDescription("Muestra los tags disponibles"),
 
   async execute(interaction) {
-    const filePath = "./data/memes.json";
+    await interaction.deferReply({ ephemeral: true });
 
-    if (!fs.existsSync(filePath)) {
-      return interaction.reply({ content: "❌ Aún no hay memes.", ephemeral: true });
-    }
-
-    const data = JSON.parse(fs.readFileSync(filePath));
-
+    const data = JSON.parse(fs.readFileSync("./data/memes.json"));
     const tags = [...new Set(data.map(m => m.tag))];
 
     const embed = createEmbed({
-      title: "🏷 Categorías disponibles",
+      title: "🏷 Tags disponibles",
       description: tags.map(t => `• ${t}`).join("\n"),
-      color: "#00BFFF"
+      color: "#00CED1"
     });
 
-    await interaction.reply({ embeds: [embed] });
+    return interaction.editReply({ embeds: [embed] });
   }
 };

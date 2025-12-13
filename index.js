@@ -5,7 +5,7 @@ import express from "express";
 import { Client, GatewayIntentBits, Collection } from "discord.js";
 
 // =======================
-// Servidor Express (Render)
+// 🌐 Servidor Express (Render / Uptime)
 // =======================
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,7 +19,7 @@ app.listen(PORT, () => {
 });
 
 // =======================
-// Cliente Discord
+// 🤖 Cliente Discord
 // =======================
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -27,51 +27,46 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// ===============================
-// 📦 CARGAR COMANDOS (VERSIÓN SEGURA)
-// ===============================
+// =======================
+// 📦 Cargar comandos (seguro)
+// =======================
 const commandsPath = path.join(process.cwd(), "src/commands");
 const commandFiles = fs
   .readdirSync(commandsPath)
-  .filter((file) => file.endsWith(".js"));
+  .filter(file => file.endsWith(".js"));
 
 for (const file of commandFiles) {
   try {
     const command = await import(`./src/commands/${file}`);
 
-    // ✅ Protección total contra archivos rotos
     if (
       !command.default ||
       !command.default.data ||
       !command.default.execute
     ) {
-      console.error(`❌ ARCHIVO DE COMANDO INVÁLIDO: ${file}`);
+      console.error(`❌ COMANDO INVÁLIDO: ${file}`);
       continue;
     }
 
-    client.commands.set(
-      command.default.data.name,
-      command.default
-    );
-
-    console.log(`✅ Comando cargado: ${file}`);
+    client.commands.set(command.default.data.name, command.default);
+    console.log(`✅ Comando cargado: ${command.default.data.name}`);
   } catch (err) {
-    console.error(`🔥 ERROR AL CARGAR: ${file}`);
+    console.error(`🔥 Error cargando ${file}`);
     console.error(err);
   }
 }
 
 // =======================
-// ✅ BOT LISTO
+// ✅ Bot listo
 // =======================
 client.once("ready", () => {
   console.log(`✅ LUPBot listo como ${client.user.tag}`);
 });
 
 // =======================
-// ⚡ SLASH COMMANDS HANDLER (ANTI 40060)
+// ⚡ Slash Commands Handler
 // =======================
-client.on("interactionCreate", async (interaction) => {
+client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);
@@ -91,4 +86,57 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+// =======================
+// 🧠 AUTOCOMPLETE GLOBAL
+// =======================
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isAutocomplete()) return;
+
+  const focusedValue = interaction.options.getFocused().toLowerCase();
+  const DB_PATH = "./data/memes.json";
+
+  if (!fs.existsSync(DB_PATH)) {
+    return interaction.respond([]);
+  }
+
+  const data = JSON.parse(fs.readFileSync(DB_PATH));
+
+  // 🔹 AUTOCOMPLETE PARA /meme (tags)
+  if (interaction.commandName === "meme") {
+    const tags = [...new Set(data.map(m => m.tag))];
+
+    const filtrados = tags
+      .filter(tag => tag.includes(focusedValue))
+      .slice(0, 25);
+
+    return interaction.respond(
+      filtrados.map(tag => ({
+        name: tag,
+        value: tag
+      }))
+    );
+  }
+
+  // 🔹 AUTOCOMPLETE PARA /meme_id (IDs)
+  if (interaction.commandName === "meme_id") {
+    const ids = data.map(m => m.id);
+
+    const filtrados = ids
+      .filter(id => id.includes(focusedValue))
+      .slice(0, 25);
+
+    return interaction.respond(
+      filtrados.map(id => ({
+        name: id,
+        value: id
+      }))
+    );
+  }
+
+  return interaction.respond([]);
+});
+
+// =======================
+// 🔑 Login
+// =======================
 client.login(process.env.TOKEN);

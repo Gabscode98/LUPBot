@@ -1,24 +1,31 @@
 import { SlashCommandBuilder } from "discord.js";
 import fs from "fs";
+import fetch from "node-fetch";
 import { createEmbed } from "../embeds.js";
 
-// Canal donde se publicará el meme subido
+// 🔗 Canal CDN donde se publican los memes
 const CDN_CHANNEL_ID = "1447678521215291525";
 
-// Tags válidas
-const TAGS_VALIDAS = ["rod", "selvin", "gabs", "yayo", "otros"];
-
-// Genera IDs tipo 001, 002, 003...
+// 🆔 Genera ID reutilizando huecos (001, 002, 003...)
 function generarID(data) {
-  const nums = data.map(m => parseInt(m.id)).filter(n => !isNaN(n));
-  const next = nums.length ? Math.max(...nums) + 1 : 1;
-  return next.toString().padStart(3, "0");
+  const usados = data
+    .map(m => Number(m.id))
+    .filter(n => Number.isInteger(n))
+    .sort((a, b) => a - b);
+
+  let esperado = 1;
+  for (const n of usados) {
+    if (n !== esperado) break;
+    esperado++;
+  }
+
+  return esperado.toString().padStart(3, "0");
 }
 
 export default {
   data: new SlashCommandBuilder()
     .setName("aporte")
-    .setDescription("Sube un meme al bot con un tag/categoría")
+    .setDescription("Sube un meme al bot con un tag personalizado")
     .addAttachmentOption(o =>
       o.setName("imagen")
         .setDescription("Imagen del meme")
@@ -26,44 +33,37 @@ export default {
     )
     .addStringOption(o =>
       o.setName("tag")
-        .setDescription("Tag o categoría del meme")
+        .setDescription("Escribe el tag del meme (ej: rod, selvin, yayo)")
         .setRequired(true)
-        .addChoices(
-          { name: "Rod", value: "rod" },
-          { name: "Selvin", value: "selvin" },
-          { name: "Gabs", value: "gabs" },
-          { name: "Yayo", value: "yayo" },
-          { name: "Otros", value: "otros" }
-        )
     ),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
     const img = interaction.options.getAttachment("imagen");
-    const tag = interaction.options.getString("tag");
+    const tag = interaction.options.getString("tag").toLowerCase().trim();
 
-    if (!img.contentType.startsWith("image")) {
+    if (!img.contentType || !img.contentType.startsWith("image")) {
       return interaction.editReply("❌ Solo se permiten imágenes.");
     }
 
-    // Ruta al JSON principal de memes
+    // 📂 JSON principal
     const dbPath = "./data/memes.json";
     const db = fs.existsSync(dbPath)
       ? JSON.parse(fs.readFileSync(dbPath))
       : [];
 
-    // Crear ID tipo 001, 002, 003...
+    // 🆔 ID correcto
     const id = generarID(db);
     const filename = `meme-${id}.png`;
     const filepath = `./memes/${filename}`;
 
-    // Descargar imagen y guardarla en /memes
+    // ⬇️ Descargar imagen
     const res = await fetch(img.url);
     const buf = Buffer.from(await res.arrayBuffer());
     fs.writeFileSync(filepath, buf);
 
-    // Registrar en el JSON principal
+    // 🧾 Guardar registro
     db.push({
       id,
       autor: interaction.user.id,
@@ -72,11 +72,13 @@ export default {
       fecha: new Date().toISOString()
     });
 
+    // ✅ ORDENAR SIEMPRE
+    db.sort((a, b) => Number(a.id) - Number(b.id));
+
     fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 
-    // Enviar al canal alimentador
+    // 📢 Enviar al CDN
     const canal = interaction.client.channels.cache.get(CDN_CHANNEL_ID);
-
     if (canal) {
       await canal.send({
         content:
@@ -88,15 +90,14 @@ export default {
       });
     }
 
-    // Respuesta final al usuario
+    // ✅ Respuesta al usuario
     const embed = createEmbed({
       title: "📥 Meme agregado correctamente",
       description:
         `Tu meme fue guardado con éxito.\n\n` +
         `🆔 ID: **${id}**\n` +
         `🏷 Tag: **${tag}**`,
-      color: "#4CAF50",
-      image: filepath
+      color: "#4CAF50"
     });
 
     return interaction.editReply({ embeds: [embed] });
