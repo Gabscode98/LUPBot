@@ -1,12 +1,12 @@
 import { SlashCommandBuilder } from "discord.js";
 import fs from "fs";
 import fetch from "node-fetch";
+import path from "path";
 import { createEmbed } from "../embeds.js";
 
-// 🔗 Canal CDN donde se publican los memes
 const CDN_CHANNEL_ID = "1449247346075631666";
 
-// 🆔 Genera ID reutilizando huecos (001, 002, 003...)
+// 🆔 Genera ID reutilizando huecos
 function generarID(data) {
   const usados = data
     .map(m => Number(m.id))
@@ -47,23 +47,26 @@ export default {
       return interaction.editReply("❌ Solo se permiten imágenes.");
     }
 
-    // 📂 JSON principal
     const dbPath = "./data/memes.json";
     const db = fs.existsSync(dbPath)
       ? JSON.parse(fs.readFileSync(dbPath))
       : [];
 
-    // 🆔 ID correcto
     const id = generarID(db);
     const filename = `meme-${id}.png`;
-    const filepath = `./memes/${filename}`;
 
-    // ⬇️ Descargar imagen
+    // 📁 Render-safe
+    const MEMES_DIR = path.join(process.cwd(), "memes");
+    if (!fs.existsSync(MEMES_DIR)) {
+      fs.mkdirSync(MEMES_DIR, { recursive: true });
+    }
+
+    const filepath = path.join(MEMES_DIR, filename);
+
     const res = await fetch(img.url);
     const buf = Buffer.from(await res.arrayBuffer());
     fs.writeFileSync(filepath, buf);
 
-    // 🧾 Guardar registro
     db.push({
       id,
       autor: interaction.user.id,
@@ -72,12 +75,9 @@ export default {
       fecha: new Date().toISOString()
     });
 
-    // ✅ ORDENAR SIEMPRE
     db.sort((a, b) => Number(a.id) - Number(b.id));
-
     fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 
-    // 📢 Enviar al CDN
     const canal = interaction.client.channels.cache.get(CDN_CHANNEL_ID);
     if (canal) {
       await canal.send({
@@ -90,13 +90,10 @@ export default {
       });
     }
 
-    // ✅ Respuesta al usuario
     const embed = createEmbed({
       title: "📥 Meme agregado correctamente",
       description:
-        `Tu meme fue guardado con éxito.\n\n` +
-        `🆔 ID: **${id}**\n` +
-        `🏷 Tag: **${tag}**`,
+        `🆔 ID: **${id}**\n🏷 Tag: **${tag}**`,
       color: "#4CAF50"
     });
 
