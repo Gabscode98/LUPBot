@@ -1,16 +1,15 @@
 import { SlashCommandBuilder } from "discord.js";
 import fs from "fs";
-import fetch from "node-fetch";
-import path from "path";
 import { createEmbed } from "../embeds.js";
 
 const CDN_CHANNEL_ID = "1449247346075631666";
+const DB_PATH = "./data/memes.json";
 
 // 🆔 Genera ID reutilizando huecos
 function generarID(data) {
   const usados = data
     .map(m => Number(m.id))
-    .filter(n => Number.isInteger(n))
+    .filter(Number.isInteger)
     .sort((a, b) => a - b);
 
   let esperado = 1;
@@ -25,7 +24,7 @@ function generarID(data) {
 export default {
   data: new SlashCommandBuilder()
     .setName("aporte")
-    .setDescription("Sube un meme al bot con un tag personalizado")
+    .setDescription("Sube un meme al bot")
     .addAttachmentOption(o =>
       o.setName("imagen")
         .setDescription("Imagen del meme")
@@ -33,7 +32,7 @@ export default {
     )
     .addStringOption(o =>
       o.setName("tag")
-        .setDescription("Escribe el tag del meme (ej: rod, selvin, yayo)")
+        .setDescription("Ej: rod, selvin, yayo")
         .setRequired(true)
     ),
 
@@ -43,57 +42,51 @@ export default {
     const img = interaction.options.getAttachment("imagen");
     const tag = interaction.options.getString("tag").toLowerCase().trim();
 
-    if (!img.contentType || !img.contentType.startsWith("image")) {
+    if (!img.contentType?.startsWith("image")) {
       return interaction.editReply("❌ Solo se permiten imágenes.");
     }
 
-    const dbPath = "./data/memes.json";
-    const db = fs.existsSync(dbPath)
-      ? JSON.parse(fs.readFileSync(dbPath))
+    const db = fs.existsSync(DB_PATH)
+      ? JSON.parse(fs.readFileSync(DB_PATH))
       : [];
 
     const id = generarID(db);
-    const filename = `meme-${id}.png`;
 
-    // 📁 Render-safe
-    const MEMES_DIR = path.join(process.cwd(), "memes");
-    if (!fs.existsSync(MEMES_DIR)) {
-      fs.mkdirSync(MEMES_DIR, { recursive: true });
+    // 📢 Enviar al canal CDN
+    const canal = interaction.client.channels.cache.get(CDN_CHANNEL_ID);
+    if (!canal) {
+      return interaction.editReply("❌ Canal CDN no encontrado.");
     }
 
-    const filepath = path.join(MEMES_DIR, filename);
+    const msg = await canal.send({
+      content:
+`🆕 **Nuevo meme**
+🆔 ID: **${id}**
+🏷 Tag: **${tag}**
+👤 Autor: <@${interaction.user.id}>`,
+      files: [img.url]
+    });
 
-    const res = await fetch(img.url);
-    const buf = Buffer.from(await res.arrayBuffer());
-    fs.writeFileSync(filepath, buf);
+    // 🔗 URL PERMANENTE DEL CDN
+    const url = msg.attachments.first().url;
 
+    // 💾 Guardar en JSON
     db.push({
       id,
-      autor: interaction.user.id,
-      archivo: filename,
       tag,
+      url,
+      autor: interaction.user.id,
       fecha: new Date().toISOString()
     });
 
     db.sort((a, b) => Number(a.id) - Number(b.id));
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
 
-    const canal = interaction.client.channels.cache.get(CDN_CHANNEL_ID);
-    if (canal) {
-      await canal.send({
-        content:
-`🆕 **Nuevo meme agregado**
-🆔 **ID:** ${id}
-🏷 **Tag:** ${tag}
-👤 Autor: <@${interaction.user.id}>`,
-        files: [filepath]
-      });
-    }
-
+    // ✅ Respuesta final
     const embed = createEmbed({
-      title: "📥 Meme agregado correctamente",
-      description:
-        `🆔 ID: **${id}**\n🏷 Tag: **${tag}**`,
+      title: "📥 Meme agregado",
+      description: `🆔 ID: **${id}**\n🏷 Tag: **${tag}**`,
+      image: url,
       color: "#4CAF50"
     });
 
